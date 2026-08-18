@@ -311,7 +311,8 @@ const DEFAULT_CONFIG = {
   year: '2026-27',
   testDate: '',
   timeMin: 20,
-  marksPerQ: 1,
+  marksCorrect: 2,
+  marksWrong: 1,
   startAt: '',
   endAt: '',
   restrictRoster: false,
@@ -514,7 +515,7 @@ function renderHome(){
     <div class="card">
       <div class="lead">${esc(CONFIG.testHeading || DEFAULT_CONFIG.testHeading)}</div>
       <div class="sub">A.Y. ${esc(CONFIG.year)}${CONFIG.testDate? ' &bull; '+esc(CONFIG.testDate):''}</div>
-      <div class="sub">Duration: <b>${esc(CONFIG.timeMin)} minutes</b> &nbsp;|&nbsp; Questions: <b>${QUESTIONS.length}</b> &nbsp;|&nbsp; Marks/Question: <b>${esc(CONFIG.marksPerQ)}</b></div>
+      <div class="sub">Duration: <b>${esc(CONFIG.timeMin)} minutes</b> &nbsp;|&nbsp; Questions: <b>${QUESTIONS.length}</b> &nbsp;|&nbsp; +${esc(CONFIG.marksCorrect)} for correct, −${esc(CONFIG.marksWrong)} for wrong</div>
       ${CONFIG.testCode? '<div class="sub">🔒 A test code (from your admin/teacher) is required to start.</div>' : ''}
       ${NOTICES.length? `
         <div class="msg info" style="text-align:left; margin-top:16px">
@@ -791,11 +792,15 @@ async function finishSubmit(){
   if(TIMER_HANDLE) clearInterval(TIMER_HANDLE);
   app.innerHTML = `<div class="card"><div class="loader"><span class="spin"></span>Submitting your answers…</div></div>`;
   let score = 0;
-  const marksPerQ = Number(CONFIG.marksPerQ)||1;
+  const marksCorrect = Number(CONFIG.marksCorrect)||2;
+  const marksWrong = Number(CONFIG.marksWrong)||1;
   QUESTIONS.forEach((q,i)=>{
-    if(ANSWERS[i]!==undefined && ANSWERS[i]===q.correct) score += marksPerQ;
+    if(ANSWERS[i]!==undefined){
+      if(ANSWERS[i]===q.correct) score += marksCorrect;
+      else score -= marksWrong; // wrong answer — negative marking. Unanswered questions are not penalized.
+    }
   });
-  const outOf = QUESTIONS.length*marksPerQ;
+  const outOf = QUESTIONS.length*marksCorrect;
   const percent = outOf? Math.round(score/outOf*100) : 0;
   const result = {
     roll: STUDENT.roll, name: STUDENT.name, enrolment: STUDENT.enrolment, cls: STUDENT.cls,
@@ -986,8 +991,13 @@ function renderTabSettings(body){
     </div>
     <div class="row2">
       <div><label>Timer (minutes)</label><input type="number" id="cfgTime" min="1" value="${esc(CONFIG.timeMin)}"></div>
-      <div><label>Marks per Question</label><input type="number" id="cfgMarks" min="1" value="${esc(CONFIG.marksPerQ)}"></div>
+      <div></div>
     </div>
+    <div class="row2">
+      <div><label>Marks for Correct Answer</label><input type="number" id="cfgMarksCorrect" min="0" step="0.5" value="${esc(CONFIG.marksCorrect)}"></div>
+      <div><label>Negative Marks for Wrong Answer</label><input type="number" id="cfgMarksWrong" min="0" step="0.5" value="${esc(CONFIG.marksWrong)}"></div>
+    </div>
+    <p class="small" style="margin-top:-6px">Example: with 2 and 1 above, a correct answer gives +2, a wrong answer gives −1, and a skipped question gives 0. Set "Negative Marks" to 0 to disable negative marking.</p>
     <div class="row2">
       <div><label>Opens At (optional)</label><input type="datetime-local" id="cfgStart" value="${esc(toLocalInput(CONFIG.startAt))}"></div>
       <div><label>Closes At (optional)</label><input type="datetime-local" id="cfgEnd" value="${esc(toLocalInput(CONFIG.endAt))}"></div>
@@ -1045,7 +1055,8 @@ function renderTabSettings(body){
     CONFIG.year = document.getElementById('cfgYear').value.trim();
     CONFIG.testDate = document.getElementById('cfgDate').value.trim();
     CONFIG.timeMin = parseInt(document.getElementById('cfgTime').value,10) || 20;
-    CONFIG.marksPerQ = parseInt(document.getElementById('cfgMarks').value,10) || 1;
+    CONFIG.marksCorrect = parseFloat(document.getElementById('cfgMarksCorrect').value) || 2;
+    CONFIG.marksWrong = parseFloat(document.getElementById('cfgMarksWrong').value) || 0;
     CONFIG.startAt = fromLocalInput(document.getElementById('cfgStart').value);
     CONFIG.endAt = fromLocalInput(document.getElementById('cfgEnd').value);
     CONFIG.testCode = document.getElementById('cfgTestCode').value.trim();
