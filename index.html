@@ -511,19 +511,30 @@ function goHome(){
 }
 
 function renderHome(){
+  const autoInstructions = [
+    `Duration: <b>${esc(CONFIG.timeMin)} minutes</b>`,
+    `Total Questions: <b>${QUESTIONS.length}</b>`,
+    CONFIG.marksWrong > 0
+      ? `Marking Scheme: <b>+${esc(CONFIG.marksCorrect)}</b> for each correct answer, <b>−${esc(CONFIG.marksWrong)}</b> for each wrong answer. Unanswered questions get 0.`
+      : `Marking Scheme: <b>+${esc(CONFIG.marksCorrect)}</b> for each correct answer. No negative marking.`,
+  ];
+  if(CONFIG.testCode) autoInstructions.push('🔒 A <b>test code</b> from your admin/teacher is required to start.');
+  if(CONFIG.startAt) autoInstructions.push(`Test opens: <b>${fmtDT(CONFIG.startAt)}</b>`);
+  if(CONFIG.endAt) autoInstructions.push(`Test closes: <b>${fmtDT(CONFIG.endAt)}</b>`);
+  autoInstructions.push('Once you begin, questions are shown one at a time — use Next/Previous to move between them, and Submit on the last question to finish.');
+  autoInstructions.push('Do not switch tabs or apps during the test — it will be recorded and shown to your admin/teacher.');
+
   app.innerHTML = `
     <div class="card">
       <div class="lead">${esc(CONFIG.testHeading || DEFAULT_CONFIG.testHeading)}</div>
       <div class="sub">A.Y. ${esc(CONFIG.year)}${CONFIG.testDate? ' &bull; '+esc(CONFIG.testDate):''}</div>
-      <div class="sub">Duration: <b>${esc(CONFIG.timeMin)} minutes</b> &nbsp;|&nbsp; Questions: <b>${QUESTIONS.length}</b> &nbsp;|&nbsp; +${esc(CONFIG.marksCorrect)} for correct, −${esc(CONFIG.marksWrong)} for wrong</div>
-      ${CONFIG.testCode? '<div class="sub">🔒 A test code (from your admin/teacher) is required to start.</div>' : ''}
-      ${NOTICES.length? `
-        <div class="msg info" style="text-align:left; margin-top:16px">
-          <b>Notices / Instructions</b>
-          <ul style="margin:8px 0 0 18px; padding:0">
-            ${NOTICES.map(n=>`<li>${esc(n)}</li>`).join('')}
-          </ul>
-        </div>` : ''}
+      <div class="msg info" style="text-align:left; margin-top:16px">
+        <b>📋 Instructions — Read before you begin</b>
+        <ul style="margin:8px 0 0 18px; padding:0">
+          ${autoInstructions.map(n=>`<li style="margin-bottom:4px">${n}</li>`).join('')}
+          ${NOTICES.map(n=>`<li style="margin-bottom:4px">${esc(n)}</li>`).join('')}
+        </ul>
+      </div>
       <div class="role-row">
         <div class="role-btn" id="btnStudent"><span class="emoji">🎓</span>Take the Test<br><span class="small">Student login</span></div>
         <div class="role-btn" id="btnAdmin"><span class="emoji">🛠️</span>Admin Panel<br><span class="small">Upload questions &amp; set timer</span></div>
@@ -953,7 +964,7 @@ function renderAdminPanel(tab){
       <div class="tabbar">
         <button data-tab="settings">Settings</button>
         <button data-tab="questions">Questions (${QUESTIONS.length})</button>
-        <button data-tab="notices">Notices (${NOTICES.length})</button>
+        <button data-tab="notices">Instructions (${NOTICES.length})</button>
         <button data-tab="students">Students</button>
         <button data-tab="results">Results</button>
       </div>
@@ -1265,8 +1276,8 @@ function downloadTemplate(){
 /* ---- Notices tab ---- */
 function renderTabNotices(body){
   body.innerHTML = `
-    <h3>Add a Notice</h3>
-    <p class="small">Notices appear on the home screen for students before they start the test — use them for instructions, eligibility, or important announcements.</p>
+    <h3>Add an Instruction / Notice</h3>
+    <p class="small">These appear on the student home screen inside the "📋 Instructions" box, below the auto-generated lines for duration, question count, and marking scheme — use them for extra rules, eligibility, or announcements.</p>
     <div style="display:flex; gap:10px; align-items:flex-start;">
       <input type="text" id="noticeText" placeholder="e.g. Carry your college ID card for verification." style="flex:1">
       <button class="btn-primary" id="addNoticeBtn" style="flex-shrink:0">Add</button>
@@ -1274,16 +1285,16 @@ function renderTabNotices(body){
     <div id="addNoticeMsg"></div>
 
     <hr style="margin:22px 0;border:none;border-top:1px solid var(--line)">
-    <h3>Bulk Replace (paste one notice per line)</h3>
+    <h3>Bulk Replace (paste one line per instruction)</h3>
     <textarea id="noticeBulk" placeholder="Carry your college ID card for verification.
 No electronic devices allowed during the test.
 Results will be announced within 3 working days."></textarea>
     <div id="bulkNoticeMsg"></div>
-    <div class="btnbar"><button class="btn-gold" id="bulkNoticeBtn">Replace All Notices</button></div>
+    <div class="btnbar"><button class="btn-gold" id="bulkNoticeBtn">Replace All</button></div>
 
     <hr style="margin:22px 0;border:none;border-top:1px solid var(--line)">
     <div class="flexbetween">
-      <h3>Current Notices (${NOTICES.length})</h3>
+      <h3>Current Instructions (${NOTICES.length})</h3>
       ${NOTICES.length? '<button class="btn-danger btn-sm" id="clearNoticesBtn">Clear All</button>' : ''}
     </div>
     <div id="noticeList"></div>
