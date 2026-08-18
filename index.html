@@ -17,6 +17,7 @@
     --line:#e7e0d2;
     --good:#1e7d46;
     --bad:#b3261e;
+    --blue:#1d6fd8;
     --radius:10px;
     --shadow:0 2px 10px rgba(0,0,0,0.08);
   }
@@ -93,7 +94,7 @@
     font-weight:600;
   }
   .wrap{
-    max-width:880px;
+    max-width:1020px;
     margin:0 auto;
     padding:18px 16px 60px;
   }
@@ -202,6 +203,30 @@
     border-radius:20px; margin-bottom:10px; letter-spacing:.3px;
   }
   .qtext{font-size:17px; font-weight:700; color:var(--ink); margin-bottom:16px; line-height:1.5;}
+  .exam-layout{display:flex; gap:16px; align-items:flex-start;}
+  .exam-main{flex:1; min-width:0;}
+  .qnav-panel{width:230px; flex-shrink:0; position:sticky; top:52px;}
+  .qnav-legend{display:flex; flex-direction:column; gap:6px; font-size:12.5px; color:var(--muted); margin-bottom:14px;}
+  .qnav-legend span{display:flex; align-items:center; gap:8px;}
+  .qnav-legend .dot{width:12px; height:12px; border-radius:3px; display:inline-block; flex-shrink:0;}
+  .qnav-legend .dot.green{background:var(--good);}
+  .qnav-legend .dot.red{background:var(--bad);}
+  .qnav-legend .dot.blue{background:var(--blue);}
+  .qnav-grid{display:grid; grid-template-columns:repeat(5,1fr); gap:7px;}
+  .qnav-box{
+    aspect-ratio:1; display:flex; align-items:center; justify-content:center;
+    border-radius:6px; font-size:12.5px; font-weight:700; color:#fff; cursor:pointer;
+    transition:.12s; border:2px solid transparent;
+  }
+  .qnav-box:hover{transform:translateY(-1px); box-shadow:0 2px 6px rgba(0,0,0,0.15);}
+  .qnav-box.attempted{background:var(--good);}
+  .qnav-box.notattempted{background:var(--bad);}
+  .qnav-box.current{background:var(--blue); border-color:#0d3d75;}
+  @media(max-width:760px){
+    .exam-layout{flex-direction:column;}
+    .qnav-panel{width:100%; position:static; order:2;}
+    .qnav-grid{grid-template-columns:repeat(8,1fr);}
+  }
   .opt{
     display:flex; align-items:flex-start; gap:10px;
     border:1.5px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:10px;
@@ -687,22 +712,33 @@ function renderQuestion(){
   const isLast = CUR_Q === total-1;
   app.innerHTML = `
     <div class="timer" id="clock">⏱ Time left: --:--</div>
-    <div class="card">
-      <div class="top-info">
-        <span><b>Name:</b> ${esc(STUDENT.name)}</span>
-        <span><b>Roll:</b> ${esc(STUDENT.roll)}</span>
-        <span><b>Enrolment:</b> ${esc(STUDENT.enrolment)}</span>
-        <span><b>Class:</b> ${esc(STUDENT.cls||'-')}</span>
+    <div class="exam-layout">
+      <div class="card exam-main">
+        <div class="top-info">
+          <span><b>Name:</b> ${esc(STUDENT.name)}</span>
+          <span><b>Roll:</b> ${esc(STUDENT.roll)}</span>
+          <span><b>Enrolment:</b> ${esc(STUDENT.enrolment)}</span>
+          <span><b>Class:</b> ${esc(STUDENT.cls||'-')}</span>
+        </div>
+        <div class="qcounter">Question ${CUR_Q+1} of ${total}</div>
+        <div class="progressbar"><div class="progressbar-fill" style="width:${pct}%"></div></div>
+        ${q.domain? `<div class="domain-tag">${esc(q.domain)}</div>`:''}
+        <div class="qtext">Q${CUR_Q+1}. ${esc(q.text)}</div>
+        <div id="optsWrap"></div>
+        <div id="qMsg"></div>
+        <div class="btnbar">
+          <button class="btn-outline" id="prevBtn" ${CUR_Q===0?'disabled':''}>&larr; Previous</button>
+          <button class="btn-primary" id="nextBtn">${isLast? 'Submit Test' : 'Next Question →'}</button>
+        </div>
       </div>
-      <div class="qcounter">Question ${CUR_Q+1} of ${total}</div>
-      <div class="progressbar"><div class="progressbar-fill" style="width:${pct}%"></div></div>
-      ${q.domain? `<div class="domain-tag">${esc(q.domain)}</div>`:''}
-      <div class="qtext">Q${CUR_Q+1}. ${esc(q.text)}</div>
-      <div id="optsWrap"></div>
-      <div id="qMsg"></div>
-      <div class="btnbar">
-        <button class="btn-outline" id="prevBtn" ${CUR_Q===0?'disabled':''}>&larr; Previous</button>
-        <button class="btn-primary" id="nextBtn">${isLast? 'Submit Test' : 'Next Question →'}</button>
+      <div class="card qnav-panel">
+        <h3 style="margin-bottom:10px">Questions</h3>
+        <div class="qnav-legend">
+          <span><i class="dot green"></i>Attempted</span>
+          <span><i class="dot red"></i>Not attempted</span>
+          <span><i class="dot blue"></i>In progress</span>
+        </div>
+        <div class="qnav-grid" id="qnavGrid"></div>
       </div>
     </div>
   `;
@@ -714,6 +750,19 @@ function renderQuestion(){
     div.innerHTML = `<span class="let">${letters[oi]})</span><span>${esc(opt)}</span>`;
     div.onclick = ()=>{ ANSWERS[CUR_Q]=oi; renderQuestion(); };
     optsWrap.appendChild(div);
+  });
+  const navGrid = document.getElementById('qnavGrid');
+  QUESTIONS.forEach((qq,i)=>{
+    const box = document.createElement('div');
+    let cls = 'qnav-box ';
+    if(i === CUR_Q) cls += 'current';
+    else if(ANSWERS[i] !== undefined) cls += 'attempted';
+    else cls += 'notattempted';
+    box.className = cls;
+    box.textContent = i+1;
+    box.title = 'Go to Question ' + (i+1);
+    box.onclick = ()=>{ CUR_Q = i; renderQuestion(); };
+    navGrid.appendChild(box);
   });
   updateTimerDisplay();
   document.getElementById('prevBtn').onclick = ()=>{ if(CUR_Q>0){ CUR_Q--; renderQuestion(); } };
